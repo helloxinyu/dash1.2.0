@@ -213,8 +213,8 @@ MediaPlayer.dependencies.BufferController = function () {
                 timeoutId =  setTimeout(function(){
                     if (!hasData()) return;
 
-                    setState.call(self, READY);
-                    requestNewFragment.call(self);
+                    //setState.call(self, READY);
+                    //requestNewFragment.call(self);
                     timeoutId = null;
                 }, time);
 			}
@@ -226,6 +226,8 @@ MediaPlayer.dependencies.BufferController = function () {
 			} else {
 				onMediaLoaded.call(this, request, response);
 			}
+			setState.call(self, READY);
+			requestNewFragment.call(self);
         },
 
 		onMediaLoaded = function (request, response) {
@@ -848,8 +850,47 @@ MediaPlayer.dependencies.BufferController = function () {
 
         loadNextFragment = function () {
             var promise,
-                self = this;
+                self = this,
+                newQuality,
+                qualityChanged = false,
+                currentVideoTime = self.videoModel.getCurrentTime(),
+                now = new Date();
+           	
+           	self.abrController.getPlaybackQuality(type, data).then(
+                    function (result) {
+                        var quality = result.quality;
+                        //self.debug.log(type + " Playback quality: " + quality);
+                        //self.debug.log("Populate " + type + " buffers.");
 
+                        if (quality !== undefined) {
+                            newQuality = quality;
+                        }
+
+                        qualityChanged = (quality !== requiredQuality);
+
+                        if (qualityChanged === true) {
+                            requiredQuality = newQuality;
+                            // The quality has beeen changed so we should abort the requests that has not been loaded yet
+                            self.fragmentController.cancelPendingRequestsForModel(fragmentModel);
+                            currentRepresentation = getRepresentationForQuality.call(self, newQuality);
+                            if (currentRepresentation === null || currentRepresentation === undefined) {
+                                throw "Unexpected error!";
+                            }
+
+                            // each representation can have its own @presentationTimeOffset, so we should set the offset
+                            // if it has changed after switching the quality
+                            if (buffer.timestampOffset !== currentRepresentation.MSETimeOffset) {
+                                buffer.timestampOffset = currentRepresentation.MSETimeOffset;
+                            }
+
+                            clearPlayListTraceMetrics(new Date(), MediaPlayer.vo.metrics.PlayList.Trace.REPRESENTATION_SWITCH_STOP_REASON);
+                            self.metricsModel.addRepresentationSwitch(type, now, currentVideoTime, currentRepresentation.id);
+                        }
+
+                        //self.debug.log(qualityChanged ? (type + " Quality changed to: " + quality) : "Quality didn't change.");
+                                }
+                ); 
+                             
             if (dataChanged && !seeking) {
                 //time = self.videoModel.getCurrentTime();
                 self.debug.log("Data changed - loading the " + type + " fragment for time: " + playingTime);
@@ -889,6 +930,7 @@ MediaPlayer.dependencies.BufferController = function () {
                 );
             }
 
+  
             return promise;
         },
 
@@ -1008,7 +1050,8 @@ MediaPlayer.dependencies.BufferController = function () {
                 newQuality,
                 qualityChanged = false,
                 now = new Date(),
-                currentVideoTime = self.videoModel.getCurrentTime();
+                currentVideoTime = self.videoModel.getCurrentTime(),
+                quality = self.abrController.getQualityFor(type);
 
             //self.debug.log("BufferController.validate() " + type + " | state: " + state);
             //self.debug.log(type + " Playback rate: " + self.videoModel.getElement().playbackRate);
@@ -1042,7 +1085,7 @@ MediaPlayer.dependencies.BufferController = function () {
                         self.requestScheduler.adjustExecuteInterval();
                     }
                 );
-                self.abrController.getPlaybackQuality(type, data).then(
+/*                self.abrController.getPlaybackQuality(type, data).then(
                     function (result) {
                         var quality = result.quality;
                         //self.debug.log(type + " Playback quality: " + quality);
@@ -1077,6 +1120,9 @@ MediaPlayer.dependencies.BufferController = function () {
                         return getRequiredFragmentCount.call(self, quality);
                     }
                 ).then(
+                    function (count) {*/
+
+                   getRequiredFragmentCount.call(self,quality).then(
                     function (count) {
                         fragmentsToLoad = count;
                         loadInitialization.call(self).then(

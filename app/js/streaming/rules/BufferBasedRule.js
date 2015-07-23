@@ -75,7 +75,7 @@ MediaPlayer.rules.BufferBasedRule = function () {
 
 						//return Q.when(new MediaPlayer.rules.SwitchRequest(2, p));
 			len = data.Representation_asArray.length;
-			self.debug.log("BBR:" + len);
+			
 			max = len;
 			if (qulity < 0) {
 				qulity = 0;
@@ -98,7 +98,9 @@ MediaPlayer.rules.BufferBasedRule = function () {
 
 			tmp = (bufferLevel - reservoir) * (max - 1) / cushion;
 			if (bufferLevel <= reservoir) {
-				newQuality = 0;
+				newQuality = 0;			
+			} else if (bufferLevel >= reservoir+cushion){
+				newQuality = max-1;
 			} else if (tmp >= qulityPlus) {
 				newQuality = Math.floor(tmp);
 			} else if (tmp <= qulityMinus) {
@@ -109,6 +111,7 @@ MediaPlayer.rules.BufferBasedRule = function () {
 			deffered.resolve(new MediaPlayer.rules.SwitchRequest(newQuality, p));
 			//return Q.when(new MediaPlayer.rules.SwitchRequest(newQuality, p));
 			
+			self.debug.log("hyh max " +max + " bufferlevel: "+bufferLevel+" quality " + newQuality);
 			
 			return deffered.promise;
 		}

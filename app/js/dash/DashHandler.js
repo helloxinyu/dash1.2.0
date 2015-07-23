@@ -909,8 +909,8 @@ Dash.dependencies.DashHandler = function () {
                 }
             ).then(
                 function (request) {
-                    //self.debug.log("Got a request.");
-                    //self.debug.log(request);
+                    self.debug.log("Got a request.");
+                    self.debug.log(request);
                     deferred.resolve(request);
                 }
             );
